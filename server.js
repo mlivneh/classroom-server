@@ -116,13 +116,13 @@ wss.on('connection', (socket) => {
                     break;
 
                 case 'aiConfig':
-                    const user = users.get(socket);
-                    if (user && user.name === 'מורה') {
-                        broadcastToRoom(user.roomCode, message, socket);
-                        console.log(`⚙️  AI config of type '${message.modelId}' sent by teacher to room ${user.roomCode}`);
-                    }
-                    break;
-                    
+					const user = users.get(socket);
+					if (user) {
+						broadcastToRoom(user.roomCode, message, socket);
+						console.log(`⚙️ AI config sent to room ${user.roomCode}`);
+					}
+					break;
+									
                 default:
                     console.log('❓ Received unknown message type:', message.type);
             }

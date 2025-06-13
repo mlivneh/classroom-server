@@ -539,52 +539,69 @@
             document.getElementById('keyHint').textContent = config.keyHint;
         }
 
-// בתוך teacher-dashboard.html, החלף את כל הפונקציה בזו:
-function deployAIToClass() {
-    const modelSelect = document.getElementById('aiModelSelect');
-    const apiKeyInput = document.getElementById('apiKeyInput');
-    
-    const selectedModelId = modelSelect.value;
-    const key = apiKeyInput.value.trim();
-    const config = modelConfigs[selectedModelId];
+        // פונקציה מתוקנת לשליחת AI לכיתה
+        function deployAIToClass() {
+            console.log("%c=== TEACHER: Starting deployAIToClass ===", "color: purple; font-weight: bold; font-size: 14px;");
+            
+            const modelSelect = document.getElementById('aiModelSelect');
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            
+            const selectedModelId = modelSelect.value;
+            const key = apiKeyInput.value.trim();
+            
+            console.log("Selected model:", selectedModelId);
+            console.log("Key provided:", key ? "Yes" : "No");
 
-    if (!key) {
-        alert('אנא הזן מפתח או טוקן.');
-        return;
-    }
+            if (!key) {
+                alert('אנא הזן מפתח או טוקן.');
+                return;
+            }
 
-    let apiKey = null;
-    let hfToken = null;
+            // בדיקה מפורשת של סוג המודל
+            let apiKey = null;
+            let hfToken = null;
 
-    // --- התיקון הלוגי כאן ---
-    // בדיקה מפורשת של סוג המודל מהאובייקט 'availableModels' של ה-SDK
-    const modelType = classroom.availableModels[selectedModelId].type;
+            // לוגיקה מתוקנת לזיהוי סוג המודל
+            if (selectedModelId === 'gemini') {
+                apiKey = key;
+                console.log("Using Gemini API key");
+            } else {
+                // כל שאר המודלים הם Hugging Face
+                hfToken = key;
+                console.log("Using Hugging Face token");
+            }
 
-    if (modelType === 'gemini') {
-        apiKey = key;
-    } else if (modelType === 'huggingface') {
-        hfToken = key;
-    } else {
-        alert('סוג מודל לא ידוע. לא ניתן להמשיך.');
-        return;
-    }
+            console.log("=== TEACHER: Sending AI config to students ===");
+            console.log("Model ID:", selectedModelId);
+            console.log("API Key:", apiKey ? "Set" : "null");
+            console.log("HF Token:", hfToken ? "Set" : "null");
 
-    // שאר הפונקציה ממשיכה כרגיל
-    const success = classroom.sendAIConfigToStudents(selectedModelId, apiKey, hfToken);
+            // שליחת ההגדרות דרך ה-SDK
+            const success = classroom.sendAIConfigToStudents(selectedModelId, apiKey, hfToken);
 
-    if (success) {
-        const aiStatusDiv = document.getElementById('aiStatus');
-        aiStatusDiv.classList.remove('ai-status-inactive');
-        aiStatusDiv.classList.add('ai-status-active');
-        aiStatusDiv.innerHTML = `<div>✅ AI הופעל עם מודל: ${modelSelect.options[modelSelect.selectedIndex].text}</div>
-                                 <div>${teacherDashboard.students.length} תלמידים יקבלו את ההגדרות</div>`;
-        document.getElementById('deployButton').disabled = true;
-        modelSelect.disabled = true;
-        apiKeyInput.disabled = true;
-    } else {
-        alert('שגיאה בשליחת הגדרות AI. ודא שאתה מחובר לשרת.');
-    }
-}        function resetAI() {
+            if (success) {
+                console.log("✅ AI config sent successfully");
+                
+                const aiStatusDiv = document.getElementById('aiStatus');
+                aiStatusDiv.classList.remove('ai-status-inactive');
+                aiStatusDiv.classList.add('ai-status-active');
+                aiStatusDiv.innerHTML = `
+                    <div>✅ AI הופעל עם מודל: ${modelSelect.options[modelSelect.selectedIndex].text}</div>
+                    <div>${teacherDashboard.students.length} תלמידים יקבלו את ההגדרות</div>
+                `;
+                
+                document.getElementById('deployButton').disabled = true;
+                modelSelect.disabled = true;
+                apiKeyInput.disabled = true;
+                
+                teacherDashboard.addActivity(`🤖 הפעלתי AI: ${modelSelect.options[modelSelect.selectedIndex].text}`);
+            } else {
+                console.error("❌ Failed to send AI config");
+                alert('שגיאה בשליחת הגדרות AI. ודא שאתה מחובר לשרת.');
+            }
+        }
+
+        function resetAI() {
             const deployButton = document.getElementById('deployButton');
             const modelSelect = document.getElementById('aiModelSelect');
             const apiKeyInput = document.getElementById('apiKeyInput');
@@ -597,9 +614,9 @@ function deployAIToClass() {
             apiKeyInput.value = '';
 
             aiStatusDiv.classList.remove('ai-status-active');
-aiStatusDiv.classList.add('ai-status-inactive');
+            aiStatusDiv.classList.add('ai-status-inactive');
             aiStatusDiv.innerHTML = `<div>❌ AI לא הופעל</div>
-                                     <div id="connectedStudents">${teacherDashboard.students.length} תלמידים יקבלו את ההגדרות</div>`;
+                                     <div id="connectedStudents">${teacherDashboard ? teacherDashboard.students.length : 0} תלמידים יקבלו את ההגדרות</div>`;
             
             console.log('AI Reset by teacher');
         }

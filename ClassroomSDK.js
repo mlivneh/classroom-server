@@ -1,5 +1,6 @@
 class ClassroomSDK {
     constructor(serverUrl = 'wss://classroom-server-aka9.onrender.com') {
+		    console.log("🔍 Actual server URL being used:", serverUrl); 
         this.serverUrl = serverUrl;
         this.gameConnection = {
             ws: null,
@@ -102,41 +103,75 @@ class ClassroomSDK {
         }
     }
 
-	handleMessage(message) {
-		// הדפסה ראשונה: לראות כל הודעה שמגיעה מהשרת
-		console.log("%cSTUDENT-SIDE: Message received from server:", "color: blue; font-weight: bold;", message);
+    handleMessage(message) {
+        // הדפסה מפורטת של כל הודעה
+        console.log("%c=== STUDENT-SIDE: New Message Received ===", "color: blue; font-weight: bold; font-size: 14px;");
+        console.log("Message type:", message.type);
+        console.log("Full message object:", message);
+        
+        switch (message.type) {
+            case 'message':
+                console.log("📩 Regular message from:", message.sender);
+                if (message.sender !== this.gameConnection.playerName) {
+                    this.displayChatMessage(message);
+                    this.showNewMessageNotification(message);
+                }
+                break;
+                
+            case 'aiConfig':
+                console.log("%c🤖 AI CONFIG MESSAGE RECEIVED!", "color: green; font-weight: bold; font-size: 16px;");
+                console.log("Model ID:", message.modelId);
+                console.log("Has API Key:", message.apiKey ? "YES" : "NO");
+                console.log("Has HF Token:", message.hfToken ? "YES" : "NO");
+                console.log("Sender:", message.sender);
+                
+                // בדיקה שהמודל קיים
+                if (!this.availableModels[message.modelId]) {
+                    console.error("❌ Model not found:", message.modelId);
+                    console.log("Available models:", Object.keys(this.availableModels));
+                    return;
+                }
+                
+                console.log("✅ Model found, processing AI config...");
+                this.handleAIConfig(message);
+                break;
+            
+            case 'joinedRoom':
+                console.log("🏠 Joined room:", message.roomCode);
+                break;
+                
+            case 'roomUpdate':
+                console.log("📊 Room update - users:", message.users);
+                break;
+                
+            case 'studentJoined':
+                console.log("👋 Student joined:", message.playerName);
+                break;
+                
+            case 'studentLeft':
+                console.log("👋 Student left:", message.playerName);
+                break;
 
-		switch (message.type) {
-			case 'message':
-				if (message.sender !== this.gameConnection.playerName) {
-					this.displayChatMessage(message);
-					this.showNewMessageNotification(message);
-				}
-				break;
-			case 'aiConfig':
-				// הדפסה שנייה: לוודא שנכנסנו לטפל בהודעת AI
-				console.log("%cSTUDENT-SIDE: It's an aiConfig message! Processing...", "color: green; font-weight: bold;");
-				this.handleAIConfig(message);
-				break;
-			
-			// הוספתי כאן את שאר המקרים שעלולים להגיע מהשרת לצורך שלמות
-			case 'joinedRoom':
-			case 'roomUpdate':
-			case 'studentJoined':
-			case 'studentLeft':
-				 // כרגע לא עושים כלום עם אלו בצד התלמיד, אבל טוב שהן כאן
-				break;
-
-			default:
-				console.warn("STUDENT-SIDE: Received unknown message type:", message.type);
-		}
-	}
+            default:
+                console.warn("❓ Unknown message type:", message.type);
+                console.log("Full unknown message:", message);
+        }
+    }
 
     handleAIConfig(message) {
         const { modelId, apiKey, hfToken } = message;
         if (!this.availableModels[modelId]) return;
 
-        this.aiConfig = { isReady: true, model: modelId, apiKey: apiKey || null, hfToken: hfToken || null, modelName: this.availableModels[modelId].name };
+        this.aiConfig = { 
+            isReady: true, 
+            model: modelId, 
+            apiKey: apiKey || null, 
+            hfToken: hfToken || null, 
+            modelName: this.availableModels[modelId].name 
+        };
+        
+        console.log("✅ AI Config updated:", this.aiConfig);
+        
         this.showAIConfigNotification(modelId);
         this.updateAIButton();
         if (this.aiContainer && this.aiContainer.style.display !== 'none') {
@@ -144,13 +179,83 @@ class ClassroomSDK {
         }
     }
 
+    showAIConfigNotification(modelId) {
+        const modelInfo = this.availableModels[modelId];
+        // יצירת התראה קופצת
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 10000;
+            direction: rtl;
+            font-family: Arial, sans-serif;
+        `;
+        
+        notification.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 10px;">${modelInfo.icon}</div>
+            <div>🎉 עוזר AI הופעל!</div>
+            <div style="font-size: 14px; margin-top: 8px; opacity: 0.9;">
+                ${modelInfo.name} זמין עכשיו
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // הסרת ההתראה אחרי 4 שניות
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 4000);
+        
+        console.log(`🎉 AI Notification shown: ${modelInfo.name}`);
+    }
+
     sendAIConfigToStudents(modelId, apiKey = null, hfToken = null) {
+        console.log("%c=== TEACHER: Sending AI Config ===", "color: purple; font-weight: bold; font-size: 14px;");
+        
         if (!this.gameConnection.isConnected) {
+            console.error("❌ Not connected to server");
             alert('❌ לא מחובר לשרת');
             return false;
         }
-        this.gameConnection.ws.send(JSON.stringify({ type: 'aiConfig', modelId, apiKey, hfToken, sender: this.gameConnection.playerName }));
-        return true;
+        
+        if (!this.availableModels[modelId]) {
+            console.error("❌ Invalid model ID:", modelId);
+            alert('❌ מודל לא תקין');
+            return false;
+        }
+        
+        const configMessage = {
+            type: 'aiConfig',
+            modelId: modelId,
+            apiKey: apiKey,
+            hfToken: hfToken,
+            sender: this.gameConnection.playerName,
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log("Sending config message:", configMessage);
+        
+        try {
+            this.gameConnection.ws.send(JSON.stringify(configMessage));
+            console.log("✅ AI config message sent successfully");
+            return true;
+        } catch (error) {
+            console.error("❌ Error sending AI config:", error);
+            alert('❌ שגיאה בשליחת הגדרות AI');
+            return false;
+        }
     }
 
     enableChat() {
@@ -309,6 +414,11 @@ class ClassroomSDK {
         msgDiv.innerHTML = `<div class="sdk-message-sender">${sender}</div><div class="sdk-message-content">${message.content}</div>`;
         area.appendChild(msgDiv);
         area.scrollTop = area.scrollHeight;
+    }
+
+    showNewMessageNotification(message) {
+        // פונקציה להצגת התראה על הודעה חדשה (אופציונלי)
+        console.log("New message notification:", message.content);
     }
 
     toggleChat() { if (this.chatContainer.style.display === 'none') this.openChat(); else this.closeChat(); }
