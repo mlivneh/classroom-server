@@ -119,18 +119,8 @@ class ClassroomSDK {
                 break;
                 
 			case 'aiConfig':
-				const user = users.get(socket);
-				console.log("?? AI Config received from:", user ? user.name : "unknown");
-				if (user) {
-					console.log("?? Broadcasting AI config to room:", user.roomCode);
-					broadcastToRoom(user.roomCode, message, socket);
-					console.log('?? AI config sent to room', user.roomCode);
-				}
+				handleMessage(socket, message);  // ??? ??? ??? ?? ????? ?????
 				break;
-                
-                console.log("‚ú?Model found, processing AI config...");
-                this.handleAIConfig(message);
-                break;
             
             case 'joinedRoom':
                 console.log("üè† Joined room:", message.roomCode);
