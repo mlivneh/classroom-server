@@ -1,6 +1,5 @@
 class ClassroomSDK {
     constructor(serverUrl = 'wss://classroom-server-aka9.onrender.com') {
-		    console.log("🔍 Actual server URL being used:", serverUrl); 
         this.serverUrl = serverUrl;
         this.gameConnection = {
             ws: null,
@@ -48,8 +47,6 @@ class ClassroomSDK {
                 icon: '💬'
             }
         };
-        
-        this.debugEnabled = false;
     }
 
     async init(containerId, playerName = null) {
@@ -104,43 +101,36 @@ class ClassroomSDK {
     }
 
     handleMessage(message) {
-        // הדפסה מפורטת של כל הודעה
-        console.log("%c=== STUDENT-SIDE: New Message Received ===", "color: blue; font-weight: bold; font-size: 14px;");
-        console.log("Message type:", message.type);
-        console.log("Full message object:", message);
+        console.log("=== STUDENT-SIDE: Message received ===", message.type);
         
         switch (message.type) {
             case 'message':
-                console.log("📩 Regular message from:", message.sender);
                 if (message.sender !== this.gameConnection.playerName) {
                     this.displayChatMessage(message);
                     this.showNewMessageNotification(message);
                 }
                 break;
                 
-			case 'aiConfig':
-				handleMessage(socket, message);  // ??? ??? ??? ?? ????? ?????
-				break;
-            
+            case 'aiConfig':
+                console.log("🤖 AI CONFIG RECEIVED!", message);
+                this.handleAIConfig(message);
+                break;
+                
             case 'joinedRoom':
                 console.log("🏠 Joined room:", message.roomCode);
                 break;
                 
             case 'roomUpdate':
-                console.log("📊 Room update - users:", message.users);
+                console.log("📊 Room update");
                 break;
                 
             case 'studentJoined':
-                console.log("👋 Student joined:", message.playerName);
+                console.log("👋 Student joined");
                 break;
                 
             case 'studentLeft':
-                console.log("👋 Student left:", message.playerName);
+                console.log("👋 Student left");
                 break;
-
-            default:
-                console.warn("�?Unknown message type:", message.type);
-                console.log("Full unknown message:", message);
         }
     }
 
@@ -156,69 +146,18 @@ class ClassroomSDK {
             modelName: this.availableModels[modelId].name 
         };
         
-        console.log("�?AI Config updated:", this.aiConfig);
+        console.log("✅ AI Config updated:", this.aiConfig);
+        alert(`🎉 AI הופעל! מודל: ${this.availableModels[modelId].name}`);
         
-        this.showAIConfigNotification(modelId);
         this.updateAIButton();
         if (this.aiContainer && this.aiContainer.style.display !== 'none') {
             this.updateAIInterface();
         }
     }
 
-    showAIConfigNotification(modelId) {
-        const modelInfo = this.availableModels[modelId];
-        // יצירת התראה קופצת
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(45deg, #4CAF50, #45a049);
-            color: white;
-            padding: 20px 30px;
-            border-radius: 15px;
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 10000;
-            direction: rtl;
-            font-family: Arial, sans-serif;
-        `;
-        
-        notification.innerHTML = `
-            <div style="font-size: 24px; margin-bottom: 10px;">${modelInfo.icon}</div>
-            <div>🎉 עוזר AI הופעל!</div>
-            <div style="font-size: 14px; margin-top: 8px; opacity: 0.9;">
-                ${modelInfo.name} זמין עכשיו
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // הסרת ההתראה אחרי 4 שניות
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 4000);
-        
-        console.log(`🎉 AI Notification shown: ${modelInfo.name}`);
-    }
-
     sendAIConfigToStudents(modelId, apiKey = null, hfToken = null) {
-        console.log("%c=== TEACHER: Sending AI Config ===", "color: purple; font-weight: bold; font-size: 14px;");
-        
         if (!this.gameConnection.isConnected) {
-            console.error("�?Not connected to server");
-            alert('�?לא מחובר לשרת');
-            return false;
-        }
-        
-        if (!this.availableModels[modelId]) {
-            console.error("�?Invalid model ID:", modelId);
-            alert('�?מודל לא תקין');
+            alert('❌ לא מחובר לשרת');
             return false;
         }
         
@@ -231,15 +170,12 @@ class ClassroomSDK {
             timestamp: new Date().toISOString()
         };
         
-        console.log("Sending config message:", configMessage);
-        
         try {
             this.gameConnection.ws.send(JSON.stringify(configMessage));
-            console.log("�?AI config message sent successfully");
+            console.log("✅ AI config sent:", configMessage);
             return true;
         } catch (error) {
-            console.error("�?Error sending AI config:", error);
-            alert('�?שגיאה בשליחת הגדרות AI');
+            console.error("❌ Error sending AI config:", error);
             return false;
         }
     }
@@ -251,7 +187,7 @@ class ClassroomSDK {
     
     createChatInterface() {
         if (document.getElementById('chatButton')) return;
-        this.chatButton = this.createDraggableButton('chatButton', '💬', '#007bff', this.toggleChat);
+        this.chatButton = this.createDraggableButton('chatButton', '💬', '#007bff', () => this.toggleChat());
         this.chatContainer = this.createWindowContainer('chatContainer', `
             <div class="sdk-header" style="background: #2c3e50;">צ'אט עם המורה</div>
             <div id="chat-messages" class="sdk-messages"></div>
@@ -278,7 +214,7 @@ class ClassroomSDK {
             </div>
             <div class="sdk-input-area">
                 <input id="ai-input" type="text" placeholder="ממתין להפעלת AI..." disabled>
-                <button id="ai-send-btn" disabled>�?/button>
+                <button id="ai-send-btn" disabled>▶</button>
             </div>`);
         document.getElementById('ai-send-btn').onclick = () => this.sendAIMessage();
         document.getElementById('ai-input').onkeypress = e => { if (e.key === 'Enter') this.sendAIMessage(); };
@@ -329,7 +265,6 @@ class ClassroomSDK {
         return data[0].generated_text.trim();
     }
 
-    // --- UI Helper Functions ---
     createDraggableButton(id, html, bgColor, onClick) {
         const button = document.createElement('button');
         button.id = id;
@@ -403,7 +338,6 @@ class ClassroomSDK {
     }
 
     showNewMessageNotification(message) {
-        // פונקציה להצגת התראה על הודעה חדשה (אופציונלי)
         console.log("New message notification:", message.content);
     }
 

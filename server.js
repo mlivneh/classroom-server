@@ -95,45 +95,39 @@ function broadcastToRoom(roomCode, message, excludeSocket = null) {
 }
 
 // --- טיפול בחיבורי WebSocket ---
-
 wss.on('connection', (socket) => {
-    console.log('🔌 New WebSocket connection');
-    
-    socket.on('message', (data) => {
-        try {
-            const message = JSON.parse(data);
-            console.log('📨 Received:', message.type, 'from', message.playerName || message.sender || 'Unknown');
-            
-            // המוח של השרת: טיפול בהודעות לפי סוג
-            switch (message.type) {
-                case 'joinRoom':
-                case 'join': // תמיכה בשני הפורמטים
-                    handleJoinRoom(socket, message);
-                    break;
-                    
-                case 'message':
-                    handleMessage(socket, message);
-                    break;
-
-                case 'aiConfig':
-					const user = users.get(socket);
-					if (user) {
-						broadcastToRoom(user.roomCode, message, socket);
-						console.log(`⚙️ AI config sent to room ${user.roomCode}`);
-					}
-					break;
-									
-                default:
-                    console.log('❓ Received unknown message type:', message.type);
-            }
-            
-        } catch (error) {
-            console.error('❌ Error parsing message:', error);
-        }
-    });
-    
-    socket.on('close', () => handleDisconnect(socket));
-    socket.on('error', (error) => console.error('❌ WebSocket error:', error));
+   console.log('🔌 New WebSocket connection');
+   
+   socket.on('message', (data) => {
+       try {
+           const message = JSON.parse(data);
+           console.log('📨 Received:', message.type, 'from', message.playerName || message.sender || 'Unknown');
+           
+           switch (message.type) {
+               case 'joinRoom':
+               case 'join': // תמיכה בשני הפורמטים
+                   handleJoinRoom(socket, message);
+                   break;
+                   
+               case 'message':
+                   handleMessage(socket, message);
+                   break;
+                   
+               case 'aiConfig':
+                   handleMessage(socket, message);  // טפל בזה כמו כל הודעה רגילה
+                   break;
+                   
+               default:
+                   console.log('❓ Received unknown message type:', message.type);
+           }
+           
+       } catch (error) {
+           console.error('❌ Error parsing message:', error);
+       }
+   });
+   
+   socket.on('close', () => handleDisconnect(socket));
+   socket.on('error', (error) => console.error('❌ WebSocket error:', error));
 });
 
 
