@@ -118,21 +118,17 @@ class ClassroomSDK {
                 }
                 break;
                 
-            case 'aiConfig':
-                console.log("%c🤖 AI CONFIG MESSAGE RECEIVED!", "color: green; font-weight: bold; font-size: 16px;");
-                console.log("Model ID:", message.modelId);
-                console.log("Has API Key:", message.apiKey ? "YES" : "NO");
-                console.log("Has HF Token:", message.hfToken ? "YES" : "NO");
-                console.log("Sender:", message.sender);
+			case 'aiConfig':
+				const user = users.get(socket);
+				console.log("?? AI Config received from:", user ? user.name : "unknown");
+				if (user) {
+					console.log("?? Broadcasting AI config to room:", user.roomCode);
+					broadcastToRoom(user.roomCode, message, socket);
+					console.log('?? AI config sent to room', user.roomCode);
+				}
+				break;
                 
-                // בדיקה שהמודל קיים
-                if (!this.availableModels[message.modelId]) {
-                    console.error("❌ Model not found:", message.modelId);
-                    console.log("Available models:", Object.keys(this.availableModels));
-                    return;
-                }
-                
-                console.log("✅ Model found, processing AI config...");
+                console.log("�?Model found, processing AI config...");
                 this.handleAIConfig(message);
                 break;
             
@@ -153,7 +149,7 @@ class ClassroomSDK {
                 break;
 
             default:
-                console.warn("❓ Unknown message type:", message.type);
+                console.warn("�?Unknown message type:", message.type);
                 console.log("Full unknown message:", message);
         }
     }
@@ -170,7 +166,7 @@ class ClassroomSDK {
             modelName: this.availableModels[modelId].name 
         };
         
-        console.log("✅ AI Config updated:", this.aiConfig);
+        console.log("�?AI Config updated:", this.aiConfig);
         
         this.showAIConfigNotification(modelId);
         this.updateAIButton();
@@ -225,14 +221,14 @@ class ClassroomSDK {
         console.log("%c=== TEACHER: Sending AI Config ===", "color: purple; font-weight: bold; font-size: 14px;");
         
         if (!this.gameConnection.isConnected) {
-            console.error("❌ Not connected to server");
-            alert('❌ לא מחובר לשרת');
+            console.error("�?Not connected to server");
+            alert('�?לא מחובר לשרת');
             return false;
         }
         
         if (!this.availableModels[modelId]) {
-            console.error("❌ Invalid model ID:", modelId);
-            alert('❌ מודל לא תקין');
+            console.error("�?Invalid model ID:", modelId);
+            alert('�?מודל לא תקין');
             return false;
         }
         
@@ -249,11 +245,11 @@ class ClassroomSDK {
         
         try {
             this.gameConnection.ws.send(JSON.stringify(configMessage));
-            console.log("✅ AI config message sent successfully");
+            console.log("�?AI config message sent successfully");
             return true;
         } catch (error) {
-            console.error("❌ Error sending AI config:", error);
-            alert('❌ שגיאה בשליחת הגדרות AI');
+            console.error("�?Error sending AI config:", error);
+            alert('�?שגיאה בשליחת הגדרות AI');
             return false;
         }
     }
@@ -292,7 +288,7 @@ class ClassroomSDK {
             </div>
             <div class="sdk-input-area">
                 <input id="ai-input" type="text" placeholder="ממתין להפעלת AI..." disabled>
-                <button id="ai-send-btn" disabled>▶</button>
+                <button id="ai-send-btn" disabled>�?/button>
             </div>`);
         document.getElementById('ai-send-btn').onclick = () => this.sendAIMessage();
         document.getElementById('ai-input').onkeypress = e => { if (e.key === 'Enter') this.sendAIMessage(); };
