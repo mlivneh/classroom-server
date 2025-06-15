@@ -72,8 +72,7 @@ Thumbs.db
 .idea/
 
 # Project specific exclusions
-old server/
-BKUP-gemini server/
+clients/
 *.txt
 *.docx
 *.doc
