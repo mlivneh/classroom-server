@@ -116,6 +116,13 @@ wss.on('connection', (socket) => {
                case 'aiConfig':
                    handleMessage(socket, message);  // טפל בזה כמו כל הודעה רגילה
                    break;
+				   
+				
+				case 'LOAD_CONTENT': 
+					handleMessage(socket, message); // פשוט נשדר את הפקודה
+					break;
+
+
                    
                default:
                    console.log('❓ Received unknown message type:', message.type);
