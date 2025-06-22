@@ -154,9 +154,35 @@ function handleJoinRoom(socket, message) {
 function handleMessage(socket, message) {
     const user = users.get(socket);
     if (!user) return;
-    
+
+    // הוספת מידע על השולח והשעה לכל הודעה
     const messageData = { ...message, sender: user.name, name: user.name, timestamp: new Date().toISOString() };
-    broadcastToRoom(user.roomCode, messageData);
+    
+    // --- לוגיקת הניתוב החדשה ---
+
+    // אם להודעה יש נמען ספציפי (target)
+    if (message.target) {
+        let foundTarget = false;
+        // חפש את ה-socket של הנמען
+        for (const [targetSocket, targetUser] of users.entries()) {
+            // ודא שהנמען נמצא באותו החדר
+            if (targetUser.roomCode === user.roomCode && targetUser.name === message.target) {
+                // שלח את ההודעה ישירות ורק אל הנמען
+                targetSocket.send(JSON.stringify(messageData));
+                foundTarget = true;
+                console.log(`✉️  Private message from ${user.name} to ${message.target}`);
+                break; // יציאה מהלולאה לאחר מציאת הנמען
+            }
+        }
+        if (!foundTarget) {
+            console.log(`❓  Target user '${message.target}' not found in room ${user.roomCode}.`);
+        }
+    } 
+    // אם אין נמען ספציפי, בצע שידור לכל החדר
+    else {
+        // השתמש בפונקציית העזר שלך, והעבר את ה-socket של השולח כדי לא לשלוח לו את ההודעה בחזרה
+        broadcastToRoom(user.roomCode, messageData, socket);
+    }
 }
 
 function handleDisconnect(socket) {
